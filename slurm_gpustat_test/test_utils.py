@@ -1,4 +1,5 @@
 import unittest
+
 from slurm_gpustat.slurm_gpustat import parse_gpu_type_and_count_via_regex
 
 

@@ -1,0 +1,57 @@
+[project]
+name = "slurm_gpustat"
+version = "0.0.15"
+description = "A simple tool for summarising GPU usage on a SLURM cluster"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Samuel Albanie" }]
+maintainers = [{ name = "Dayo Ntwari" }]
+keywords = ["slurm", "gpu", "hpc", "monitoring", "cli"]
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+]
+# Dropped vs. the old setup.py: `seaborn` and `colored` (never imported).
+# `numpy` and `pandas` are kept for now but barely used — a later trim target.
+dependencies = [
+    "beartype",
+    "humanfriendly",
+    "humanize",
+    "numpy",
+    "pandas",
+    "tabulate",
+    "termcolor",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "coverage"]
+
+[project.scripts]
+slurm_gpustat = "slurm_gpustat.slurm_gpustat:main"
+
+[project.urls]
+Homepage = "https://github.com/dayontwari/slurm_gpustat"
+Upstream = "https://github.com/albanie/slurm_gpustat"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["slurm_gpustat"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+# E/F: pyflakes+pycodestyle, I: import sorting, UP: pyupgrade, B: bugbear
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["slurm_gpustat_test"]

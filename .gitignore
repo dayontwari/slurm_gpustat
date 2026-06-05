@@ -1,6 +1,12 @@
 .vscode
 *.pyc
+__pycache__/
 dist
 slurm_gpustat.egg-info
 build
 .coverage
+
+# Modern toolchain
+.venv/
+.pytest_cache/
+.ruff_cache/

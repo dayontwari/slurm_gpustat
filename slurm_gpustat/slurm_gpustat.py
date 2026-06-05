@@ -5,6 +5,7 @@ The tool can be used in two ways:
 2. To launch a daemon which will log usage over time.  This can then later be queried
    to provide simple usage statistics.
 """
+
 import argparse
 import ast
 import atexit
@@ -59,11 +60,11 @@ class Daemon:
                 # exit first parent
                 sys.exit(0)
         except OSError as err:
-            sys.stderr.write('fork #1 failed: {0}\n'.format(err))
+            sys.stderr.write(f"fork #1 failed: {err}\n")
             sys.exit(1)
 
         # decouple from parent environment
-        os.chdir('/')
+        os.chdir("/")
         os.setsid()
         os.umask(0)
 
@@ -74,15 +75,15 @@ class Daemon:
                 # exit from second parent
                 sys.exit(0)
         except OSError as err:
-            sys.stderr.write('fork #2 failed: {0}\n'.format(err))
+            sys.stderr.write(f"fork #2 failed: {err}\n")
             sys.exit(1)
 
         # redirect standard file descriptors
         sys.stdout.flush()
         sys.stderr.flush()
-        si = open(os.devnull, 'r')
-        so = open(os.devnull, 'a+')
-        se = open(os.devnull, 'a+')
+        si = open(os.devnull)
+        so = open(os.devnull, "a+")
+        se = open(os.devnull, "a+")
 
         os.dup2(si.fileno(), sys.stdin.fileno())
         os.dup2(so.fileno(), sys.stdout.fileno())
@@ -92,8 +93,8 @@ class Daemon:
         atexit.register(self.delpid)
 
         pid = str(os.getpid())
-        with open(self.pidfile, 'w+') as f:
-            f.write(pid + '\n')
+        with open(self.pidfile, "w+") as f:
+            f.write(pid + "\n")
 
     def delpid(self):
         os.remove(self.pidfile)
@@ -103,10 +104,9 @@ class Daemon:
 
         # Check for a pidfile to see if the daemon already runs
         try:
-            with open(self.pidfile, 'r') as pf:
-
+            with open(self.pidfile) as pf:
                 pid = int(pf.read().strip())
-        except IOError:
+        except OSError:
             pid = None
 
         if pid:
@@ -123,9 +123,9 @@ class Daemon:
 
         # Get the pid from the pidfile
         try:
-            with open(self.pidfile, 'r') as pf:
+            with open(self.pidfile) as pf:
                 pid = int(pf.read().strip())
-        except IOError:
+        except OSError:
             pid = None
 
         if not pid:
@@ -160,8 +160,8 @@ class Daemon:
 
 
 class GPUStatDaemon(Daemon):
-    """A lightweight daemon which intermittently logs gpu usage to a text file.
-    """
+    """A lightweight daemon which intermittently logs gpu usage to a text file."""
+
     timestamp_format = "%Y-%m-%d_%H:%M:%S"
 
     def __init__(self, pidfile, log_path, log_interval):
@@ -211,7 +211,7 @@ class GPUStatDaemon(Daemon):
         """
         if not Path(log_path).exists():
             raise ValueError("No historical log found.  Did you start the daemon?")
-        with open(log_path, "r") as f:
+        with open(log_path) as f:
             rows = f.read().splitlines()
         data = []
         for row in rows:
@@ -222,8 +222,7 @@ class GPUStatDaemon(Daemon):
         return data
 
     def run(self):
-        """Run the daemon - will intermittently log gpu usage to disk.
-        """
+        """Run the daemon - will intermittently log gpu usage to disk."""
         while True:
             resources = get_node2gpus_mapping()
             usage = gpu_usage_grouped_by_user(resources)
@@ -296,7 +295,7 @@ def split_node_str(node_str):
         elif not stack and char == ",":
             breakpoints.append(ii + 1)
     end = len(node_str) + 1
-    return [node_str[i: j - 1] for i, j in zip(breakpoints, breakpoints[1:] + [end])]
+    return [node_str[i : j - 1] for i, j in zip(breakpoints, breakpoints[1:] + [end], strict=True)]
 
 
 def parse_node_names(node_str):
@@ -322,15 +321,17 @@ def parse_node_names(node_str):
         else:
             head, tail = node_spec.index("["), node_spec.index("]")
             prefix = node_spec[:head]
-            subspecs = node_spec[head + 1:tail].split(",")
+            subspecs = node_spec[head + 1 : tail].split(",")
             for subspec in subspecs:
                 if "-" not in subspec:
                     subnames = [f"{prefix}{subspec}"]
                 else:
                     start, end = subspec.split("-")
                     num_digits = len(start)
-                    subnames = [f"{prefix}{str(x).zfill(num_digits)}"
-                                for x in range(int(start), int(end) + 1)]
+                    subnames = [
+                        f"{prefix}{str(x).zfill(num_digits)}"
+                        for x in range(int(start), int(end) + 1)
+                    ]
                 names.extend(subnames)
     return names
 
@@ -417,7 +418,7 @@ def occupancy_stats_for_node(node: str) -> dict:
 
 @beartype
 def get_node2gpus_mapping(
-        partition: Optional[str] = None,
+    partition: Optional[str] = None,
 ) -> dict:
     """Query SLURM for the number and types of GPUs under management.
 
@@ -450,9 +451,9 @@ def get_node2gpus_mapping(
 
 @beartype
 def parse_gpu_type_and_count_via_regex(
-        resource_str: str,
-        default_gpus: int = 4,
-        default_gpu_name: str = "NONAME_GPU",
+    resource_str: str,
+    default_gpus: int = 4,
+    default_gpu_name: str = "NONAME_GPU",
 ) -> Tuple[str, int]:
     """Parse the gpu type and gpu count from an sinfo output string using regex.
 
@@ -523,8 +524,11 @@ def summary(mode: str, resources: dict = None, states: dict = None) -> List[List
     if not states:
         states = node_states()
     if mode == "online":
-        res = {key: val for key, val in resources.items()
-               if states.get(key, "down") not in INACCESSIBLE}
+        res = {
+            key: val
+            for key, val in resources.items()
+            if states.get(key, "down") not in INACCESSIBLE
+        }
     elif mode == "all":
         res = resources
     else:
@@ -557,7 +561,7 @@ def gpu_usage_grouped_by_user(resources: dict, partition: Optional[str] = None) 
     for row in rows:
         tokens = row.split()
         # ignore pending jobs
-        if len(tokens) < 4 or 'gpu' not in tokens[0]:
+        if len(tokens) < 4 or "gpu" not in tokens[0]:
             continue
         gpu_count_str, node_str, user, jobid = tokens
         gpu_count_tokens = gpu_count_str.split(":")
@@ -565,8 +569,11 @@ def gpu_usage_grouped_by_user(resources: dict, partition: Optional[str] = None) 
             gpu_count_tokens.append("1")
         num_gpus = int(gpu_count_tokens[-1])
         # get detailed job information, to check if using bash
-        detailed_job_info = {row.split('=')[0].strip(): row.split('=')[1].strip()
-                             for row in parse_cmd(detailed_job_cmd % jobid, split=True) if '=' in row}
+        detailed_job_info = {
+            row.split("=")[0].strip(): row.split("=")[1].strip()
+            for row in parse_cmd(detailed_job_cmd % jobid, split=True)
+            if "=" in row
+        }
         node_names = parse_node_names(node_str)
         for node_name in node_names:
             # If a node still has jobs running but is draining, it will not be present
@@ -578,34 +585,34 @@ def gpu_usage_grouped_by_user(resources: dict, partition: Optional[str] = None) 
                 gpu_type = None
             elif len(gpu_count_tokens) == 3:
                 gpu_type = gpu_count_tokens[1]
-                if gpu_type == 'gpu':
-                    gpu_type = detailed_job_info['JOB_GRES'].split(':')[1]
+                if gpu_type == "gpu":
+                    gpu_type = detailed_job_info["JOB_GRES"].split(":")[1]
             if gpu_type is None:
                 if len(node_gpu_types) != 1:
-                    gpu_type = sorted(
-                        resources[node_name],
-                        key=lambda k: k['count'],
-                        reverse=True
-                    )[0]['type']
-                    msg = (f"cannot determine node gpu type for {user} on {node_name}"
-                           f" (guessing {gpu_type})")
+                    gpu_type = sorted(resources[node_name], key=lambda k: k["count"], reverse=True)[
+                        0
+                    ]["type"]
+                    msg = (
+                        f"cannot determine node gpu type for {user} on {node_name}"
+                        f" (guessing {gpu_type})"
+                    )
                     print(f"WARNING >>> {msg}")
                 else:
                     gpu_type = node_gpu_types[0]
             if gpu_type in usage[user]:
-                usage[user][gpu_type][node_name]['n_gpu'] += num_gpus
+                usage[user][gpu_type][node_name]["n_gpu"] += num_gpus
 
             else:
-                usage[user][gpu_type] = defaultdict(lambda: {'n_gpu': 0})
-                usage[user][gpu_type][node_name]['n_gpu'] += num_gpus
+                usage[user][gpu_type] = defaultdict(lambda: {"n_gpu": 0})
+                usage[user][gpu_type][node_name]["n_gpu"] += num_gpus
     return usage
 
 
 @beartype
 def in_use(
-        resources: dict = None,
-        partition: Optional[str] = None,
-        verbose: bool = False,
+    resources: dict = None,
+    partition: Optional[str] = None,
+    verbose: bool = False,
 ) -> List[List]:
     """Print a short summary of the resources that are currently used by each user.
 
@@ -618,22 +625,24 @@ def in_use(
     aggregates = {}
     for user, subdict in usage.items():
         aggregates[user] = {}
-        aggregates[user]['n_gpu'] = {key: sum([x['n_gpu'] for x in val.values()])
-                                     for key, val in subdict.items()}
+        aggregates[user]["n_gpu"] = {
+            key: sum([x["n_gpu"] for x in val.values()]) for key, val in subdict.items()
+        }
     in_use_table = [["user", "total GPU's allocated", "count per GPU"]]
-    for user, subdict in sorted(aggregates.items(),
-                                key=lambda x: sum(x[1]['n_gpu'].values()), reverse=True):
-        total = (f"{str(sum(subdict['n_gpu'].values())):2s} ")
-        summary_str = ", ".join([f"{key}: {val}" for key, val in subdict['n_gpu'].items()])
+    for user, subdict in sorted(
+        aggregates.items(), key=lambda x: sum(x[1]["n_gpu"].values()), reverse=True
+    ):
+        total = f"{str(sum(subdict['n_gpu'].values())):2s} "
+        summary_str = ", ".join([f"{key}: {val}" for key, val in subdict["n_gpu"].items()])
         in_use_table.append([user, total, summary_str])
     return in_use_table
 
 
 @beartype
 def available(
-        node2gpus_map: dict = None,
-        states: dict = None,
-        verbose: bool = False,
+    node2gpus_map: dict = None,
+    states: dict = None,
+    verbose: bool = False,
 ) -> List[List]:
     """Print a short summary of resources available on the cluster.
 
@@ -656,8 +665,11 @@ def available(
         states = node_states()
 
     # drop nodes that are in down/inaccessible
-    node2gpus_map = {node: gpus for node, gpus in node2gpus_map.items()
-                     if states.get(node, "down") not in INACCESSIBLE}
+    node2gpus_map = {
+        node: gpus
+        for node, gpus in node2gpus_map.items()
+        if states.get(node, "down") not in INACCESSIBLE
+    }
 
     gpu_usage_by_user = gpu_usage_grouped_by_user(resources=node2gpus_map)
 
@@ -666,7 +678,7 @@ def available(
             for node_name, user_gpu_count in node_dicts.items():
                 resource_idx = [x["type"] for x in node2gpus_map[node_name]].index(gpu_type)
                 count = node2gpus_map[node_name][resource_idx]["count"]
-                count = max(count - user_gpu_count['n_gpu'], 0)
+                count = max(count - user_gpu_count["n_gpu"], 0)
                 node2gpus_map[node_name][resource_idx]["count"] = count
     by_type = resource_by_type(node2gpus_map)
     total = sum(x["count"] for sublist in by_type.values() for x in sublist)
@@ -680,8 +692,11 @@ def available(
                 node, count = x["node"], x["count"]
                 if count:
                     occupancy = occupancy_stats_for_node(node)
-                    users = [user for user in gpu_usage_by_user
-                             if node in gpu_usage_by_user[user].get(key, [])]
+                    users = [
+                        user
+                        for user in gpu_usage_by_user
+                        if node in gpu_usage_by_user[user].get(key, [])
+                    ]
                     details = [f"{key}: {val}" for key, val in sorted(occupancy.items())]
                     details = f"[{', '.join(details)}] [{','.join(users)}]"
                     summary_strs.append(f"\n -> {node}: {count} {key} {details}")
@@ -721,20 +736,20 @@ def all_info(color: int, verbose: bool, partition: Optional[str] = None):
         print("all GPU's:")
         for row in all_gpus_table:
             for x in row:
-                print(x, end='\t')
-            print('\n', end='')
+                print(x, end="\t")
+            print("\n", end="")
         print()
         print("GPU's online:")
         for row in online_table:
             for x in row:
-                print(x, end='\t')
-            print('\n', end='')
+                print(x, end="\t")
+            print("\n", end="")
         print()
         print("GPU's available:")
         for row in avail_table:
             for x in row:
-                print(x, end='\t')
-            print('\n', end='')
+                print(x, end="\t")
+            print("\n", end="")
         print()
         print("Usage by user:")
     # in non-verbose mode, merge the three summaries into one nice table
@@ -752,7 +767,7 @@ def all_info(color: int, verbose: bool, partition: Optional[str] = None):
 
         big_df = pd.DataFrame()
         for df in [all_gpus_df, online_df, avail_df]:
-            big_df = big_df.merge(df, how='outer', left_index=True, right_index=True)
+            big_df = big_df.merge(df, how="outer", left_index=True, right_index=True)
         big_df = big_df.sort_values(by="all", ascending=False)
         print(tabulate(big_df, headers=(["GPU model", "all", "online", "available"])))
         print(divider)
@@ -762,27 +777,47 @@ def all_info(color: int, verbose: bool, partition: Optional[str] = None):
 
 def main():
     parser = argparse.ArgumentParser(description="slurm_gpus tool")
-    parser.add_argument("--action", default="current",
-                        choices=["current", "history", "daemon-start", "daemon-stop"],
-                        help=("The function performed by slurm_gpustat: `current` will"
-                              " provide a summary of current usage, 'history' will "
-                              "provide statistics from historical data (provided that the"
-                              "logging daemon has been running). 'daemon-start' and"
-                              "'daemon-stop' will start and stop the daemon, resp."))
-    parser.add_argument("-p", "--partition", default=None,
-                        help=("the partition/queue (or multiple, comma separated) of"
-                              " interest. By default set to all available partitions."))
-    parser.add_argument("--log_path",
-                        default=Path.home() / "data/daemons/logs/slurm_gpustat.log",
-                        help="the location where daemon log files will be stored")
-    parser.add_argument("--gpustat_pid",
-                        default=Path.home() / "data/daemons/pids/slurm_gpustat.pid",
-                        help="the location where the daemon PID file will be stored")
-    parser.add_argument("--daemon_log_interval", type=int, default=43200,
-                        help="time interval (secs) between stat logging (default 12 hrs)")
+    parser.add_argument(
+        "--action",
+        default="current",
+        choices=["current", "history", "daemon-start", "daemon-stop"],
+        help=(
+            "The function performed by slurm_gpustat: `current` will"
+            " provide a summary of current usage, 'history' will "
+            "provide statistics from historical data (provided that the"
+            "logging daemon has been running). 'daemon-start' and"
+            "'daemon-stop' will start and stop the daemon, resp."
+        ),
+    )
+    parser.add_argument(
+        "-p",
+        "--partition",
+        default=None,
+        help=(
+            "the partition/queue (or multiple, comma separated) of"
+            " interest. By default set to all available partitions."
+        ),
+    )
+    parser.add_argument(
+        "--log_path",
+        default=Path.home() / "data/daemons/logs/slurm_gpustat.log",
+        help="the location where daemon log files will be stored",
+    )
+    parser.add_argument(
+        "--gpustat_pid",
+        default=Path.home() / "data/daemons/pids/slurm_gpustat.pid",
+        help="the location where the daemon PID file will be stored",
+    )
+    parser.add_argument(
+        "--daemon_log_interval",
+        type=int,
+        default=43200,
+        help="time interval (secs) between stat logging (default 12 hrs)",
+    )
     parser.add_argument("--color", type=int, default=1, help="color output")
-    parser.add_argument("--verbose", action="store_true",
-                        help="provide a more detailed breakdown of resources")
+    parser.add_argument(
+        "--verbose", action="store_true", help="provide a more detailed breakdown of resources"
+    )
     args = parser.parse_args()
 
     if args.action == "current":
